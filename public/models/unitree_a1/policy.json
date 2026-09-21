@@ -1,0 +1,42 @@
+{
+  "_readme": [
+    "Configuração da policy de locomoção (RL) para o Unitree A1.",
+    "Coloque o arquivo treinado em public/models/unitree_a1/policy.onnx e ajuste",
+    "os campos abaixo para casar com o checkpoint que você usar.",
+    "Os defaults seguem a convenção do legged_gym / unitree_rl_gym (A1, 12 juntas).",
+    "Se o seu .onnx esperar outro layout, mude 'obsOrder', as escalas e 'jointOrder'."
+  ],
+
+  "model": "policy.onnx",
+  "controlHz": 50,
+  "actionScale": 0.25,
+  "clipActions": 100,
+
+  "jointOrder": [
+    "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+    "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+    "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+    "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"
+  ],
+
+  "defaultJointAngles": {
+    "FL_hip_joint": 0.0, "FL_thigh_joint": 0.9, "FL_calf_joint": -1.8,
+    "FR_hip_joint": 0.0, "FR_thigh_joint": 0.9, "FR_calf_joint": -1.8,
+    "RL_hip_joint": 0.0, "RL_thigh_joint": 0.9, "RL_calf_joint": -1.8,
+    "RR_hip_joint": 0.0, "RR_thigh_joint": 0.9, "RR_calf_joint": -1.8
+  },
+
+  "obsOrder": ["angVel", "gravity", "command", "dofPos", "dofVel", "actions"],
+
+  "obsScales": {
+    "angVel": 0.25,
+    "linVel": 2.0,
+    "dofPos": 1.0,
+    "dofVel": 0.05
+  },
+
+  "commandScales": {
+    "linVel": 2.0,
+    "angVel": 0.25
+  }
+}

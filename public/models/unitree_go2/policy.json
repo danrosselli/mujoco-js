@@ -1,0 +1,60 @@
+{
+  "_readme": [
+    "Policy de locomoção (RL) para o Unitree Go2 — treinada com mjlab (rsl_rl).",
+    "ATENÇÃO: o policy.onnx usa pesos externos. Copie TAMBÉM o arquivo",
+    "'policy.onnx.data' para esta pasta, senão o ONNX não carrega.",
+    "Layout das 45 observações foi decodificado do normalizador embutido no ONNX",
+    "(mean/std): [angVel(3) | gravity(3) | command(3) | dofPos(12) | dofVel(12) | actions(12)]."
+  ],
+
+  "model": "policy.onnx",
+  "controlHz": 50,
+  "controlMode": "position",
+  "actionScale": 0.25,
+  "clipActions": 100,
+
+  "jointOrder": [
+    "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+    "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+    "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+    "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint"
+  ],
+
+  "defaultJointAngles": {
+    "FL_hip_joint": 0.0, "FL_thigh_joint": 0.9, "FL_calf_joint": -1.8,
+    "FR_hip_joint": 0.0, "FR_thigh_joint": 0.9, "FR_calf_joint": -1.8,
+    "RL_hip_joint": 0.0, "RL_thigh_joint": 0.9, "RL_calf_joint": -1.8,
+    "RR_hip_joint": 0.0, "RR_thigh_joint": 0.9, "RR_calf_joint": -1.8
+  },
+
+  "jointGains": {
+    "FL_hip_joint": { "kp": 20, "kd": 0.5 },
+    "FR_hip_joint": { "kp": 20, "kd": 0.5 },
+    "RL_hip_joint": { "kp": 20, "kd": 0.5 },
+    "RR_hip_joint": { "kp": 20, "kd": 0.5 },
+
+    "FL_thigh_joint": { "kp": 20, "kd": 0.5 },
+    "FR_thigh_joint": { "kp": 20, "kd": 0.5 },
+    "RL_thigh_joint": { "kp": 20, "kd": 0.5 },
+    "RR_thigh_joint": { "kp": 20, "kd": 0.5 },
+
+    "FL_calf_joint": { "kp": 40, "kd": 1.0 },
+    "FR_calf_joint": { "kp": 40, "kd": 1.0 },
+    "RL_calf_joint": { "kp": 40, "kd": 1.0 },
+    "RR_calf_joint": { "kp": 40, "kd": 1.0 }
+  },
+
+  "obsOrder": ["angVel", "gravity", "command", "dofPos", "dofVel", "actions"],
+
+  "obsScales": {
+    "angVel": 0.25,
+    "linVel": 1.0,
+    "dofPos": 1.0,
+    "dofVel": 0.05
+  },
+
+  "commandScales": {
+    "linVel": 1.0,
+    "angVel": 1.0
+  }
+}

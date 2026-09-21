@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Unitree Go2 - MuJoCo JS + Three.js + ONNX</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #1a1d22; }
+    #canvas-container { width: 100vw; height: 100vh; }
+    #info {
+      position: absolute; top: 20px; left: 20px; color: #e8eaed;
+      font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6;
+      background: rgba(0, 0, 0, 0.65); padding: 12px 16px; border-radius: 8px;
+      z-index: 10; pointer-events: none; max-width: 320px;
+    }
+    #info small { color: #9aa0a8; }
+    #info kbd {
+      background: #2c333d; border: 1px solid #454e5a; border-bottom-width: 2px;
+      border-radius: 4px; padding: 0 5px; font-family: inherit; font-size: 12px;
+    }
+    #policy-status { color: #7fd18d; }
+  </style>
+</head>
+<body>
+
+<div id="info">
+  <strong>Unitree Go2</strong><br>
+  <span id="policy-status">Carregando…</span>
+  <hr style="border:0;border-top:1px solid #454e5a;margin:8px 0">
+  <kbd>W</kbd>/<kbd>S</kbd> frente/trás · <kbd>A</kbd>/<kbd>D</kbd> lateral<br>
+  <kbd>Q</kbd>/<kbd>E</kbd> girar · <kbd>R</kbd> resetar<br>
+  <small>arraste para orbitar · scroll para zoom</small>
+</div>
+<div id="canvas-container"></div>
+
+<script type="module" src="/main.js"></script>
+</body>
+</html>
