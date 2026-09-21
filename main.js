@@ -354,9 +354,9 @@ function makeSkyDome() {
     side: THREE.BackSide,
     depthWrite: false,
     uniforms: {
-      topColor: { value: new THREE.Color(0x8fb6e8) },
-      midColor: { value: new THREE.Color(0xcfe0f2) },
-      bottomColor: { value: new THREE.Color(0xeef2f6) },
+      topColor: { value: new THREE.Color(0x6285b0) },
+      midColor: { value: new THREE.Color(0x93aac6) },
+      bottomColor: { value: new THREE.Color(0xbfcbd8) },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorldPos;
@@ -395,12 +395,12 @@ function makeCheckerTexture() {
 
   for (let y = 0; y < squares; y++) {
     for (let x = 0; x < squares; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? '#eaeef3' : '#d8dfe8';
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#4d545f' : '#404750';
       ctx.fillRect(x * s, y * s, s, s);
     }
   }
 
-  ctx.strokeStyle = 'rgba(148, 162, 178, 0.5)';
+  ctx.strokeStyle = 'rgba(138, 148, 163, 0.35)';
   ctx.lineWidth = Math.max(1, size / 320);
   for (let i = 0; i <= squares; i++) {
     ctx.beginPath();
@@ -429,7 +429,7 @@ async function init() {
   panel = document.getElementById('info');
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xdfe8f2); // fallback beyond the dome
+  scene.background = new THREE.Color(0xb9c6d4); // fallback beyond the dome
 
   // MuJoCo is Z-up, so keep the whole scene Z-up.
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 60);
@@ -442,7 +442,7 @@ async function init() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.95;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   container.appendChild(renderer.domElement);
 
@@ -456,10 +456,10 @@ async function init() {
   controls.update();
 
   // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.45));
-  scene.add(new THREE.HemisphereLight(0xdce9f7, 0xb9c2cc, 0.9));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+  scene.add(new THREE.HemisphereLight(0xdce9f7, 0x8a939e, 0.65));
 
-  const key = new THREE.DirectionalLight(0xfff6e8, 1.5);
+  const key = new THREE.DirectionalLight(0xfff6e8, 1.35);
   key.position.set(2, -3, 4);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -475,7 +475,7 @@ async function init() {
   scene.add(key.target);
   keyLight = key;
 
-  const fill = new THREE.DirectionalLight(0xdfeaff, 0.45);
+  const fill = new THREE.DirectionalLight(0xdfeaff, 0.4);
   fill.position.set(-3, 2, 2);
   scene.add(fill);
 
