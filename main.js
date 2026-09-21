@@ -32,6 +32,7 @@ let panel;
 let controller = null; // PolicyController, or null when no .onnx is present
 let statusEl = null;
 let keyLight = null; // main directional light, kept centered on the robot
+let skyDome = null; // sky dome, recentered on the camera every frame
 
 // Velocity command limits (m/s and rad/s) reached with the keyboard.
 const MAX_VX = 1.0;
@@ -358,10 +359,12 @@ function makeSkyDome() {
       midColor: { value: new THREE.Color(0x93aac6) },
       bottomColor: { value: new THREE.Color(0xbfcbd8) },
     },
+    // Gradient is derived from the object-space direction, so the dome can be
+    // recentered on the camera every frame without shifting the colors.
     vertexShader: /* glsl */ `
-      varying vec3 vWorldPos;
+      varying vec3 vDir;
       void main() {
-        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        vDir = position;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
@@ -369,9 +372,9 @@ function makeSkyDome() {
       uniform vec3 topColor;
       uniform vec3 midColor;
       uniform vec3 bottomColor;
-      varying vec3 vWorldPos;
+      varying vec3 vDir;
       void main() {
-        float h = normalize(vWorldPos).z;                       // -1 .. 1 (Z-up)
+        float h = normalize(vDir).z;                            // -1 .. 1 (Z-up)
         vec3 col = mix(bottomColor, midColor, smoothstep(-0.25, 0.08, h));
         col = mix(col, topColor, smoothstep(0.05, 0.75, h));
         gl_FragColor = vec4(col, 1.0);
@@ -380,6 +383,7 @@ function makeSkyDome() {
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 24), material);
   sky.frustumCulled = false;
+  sky.renderOrder = -1; // draw first so it never occludes the scene
   return sky;
 }
 
@@ -447,7 +451,8 @@ async function init() {
   container.appendChild(renderer.domElement);
 
   // Sky
-  scene.add(makeSkyDome());
+  skyDome = makeSkyDome();
+  scene.add(skyDome);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0, 0.25);
@@ -586,6 +591,7 @@ function animate(now) {
 
   syncBodies();
   followRobotWithLight();
+  if (skyDome) skyDome.position.copy(camera.position);
   controls.update();
   renderer.render(scene, camera);
 }
