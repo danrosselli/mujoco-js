@@ -31,6 +31,7 @@ let bodyNodes = []; // one THREE.Group per MuJoCo body
 let panel;
 let controller = null; // PolicyController, or null when no .onnx is present
 let statusEl = null;
+let keyLight = null; // main directional light, kept centered on the robot
 
 // Velocity command limits (m/s and rad/s) reached with the keyboard.
 const MAX_VX = 1.0;
@@ -214,6 +215,8 @@ function buildSceneFromModel() {
     if (!geometry) continue;
 
     const mesh = new THREE.Mesh(geometry, geomVisualMaterial(g));
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     // Geom local transform relative to its body.
     mesh.position.set(geomPos[g * 3], geomPos[g * 3 + 1], geomPos[g * 3 + 2]);
@@ -341,6 +344,83 @@ function resetSim() {
 }
 
 // ---------------------------------------------------------------------------
+// Environment (sky + floor)
+// ---------------------------------------------------------------------------
+
+// Gradient sky dome. The scene is Z-up, so the gradient is driven by the
+// vertical (Z) component of the view direction.
+function makeSkyDome() {
+  const material = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      topColor: { value: new THREE.Color(0x8fb6e8) },
+      midColor: { value: new THREE.Color(0xcfe0f2) },
+      bottomColor: { value: new THREE.Color(0xeef2f6) },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vWorldPos;
+      void main() {
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 topColor;
+      uniform vec3 midColor;
+      uniform vec3 bottomColor;
+      varying vec3 vWorldPos;
+      void main() {
+        float h = normalize(vWorldPos).z;                       // -1 .. 1 (Z-up)
+        vec3 col = mix(bottomColor, midColor, smoothstep(-0.25, 0.08, h));
+        col = mix(col, topColor, smoothstep(0.05, 0.75, h));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 24), material);
+  sky.frustumCulled = false;
+  return sky;
+}
+
+// Procedural checkerboard with thin grid lines drawn in, so the floor reads as
+// a clean technical surface instead of a flat dark plane.
+function makeCheckerTexture() {
+  const size = 512;
+  const squares = 8;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const s = size / squares;
+
+  for (let y = 0; y < squares; y++) {
+    for (let x = 0; x < squares; x++) {
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#eaeef3' : '#d8dfe8';
+      ctx.fillRect(x * s, y * s, s, s);
+    }
+  }
+
+  ctx.strokeStyle = 'rgba(148, 162, 178, 0.5)';
+  ctx.lineWidth = Math.max(1, size / 320);
+  for (let i = 0; i <= squares; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * s, 0);
+    ctx.lineTo(i * s, size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, i * s);
+    ctx.lineTo(size, i * s);
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
@@ -349,17 +429,25 @@ async function init() {
   panel = document.getElementById('info');
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1d22);
+  scene.background = new THREE.Color(0xdfe8f2); // fallback beyond the dome
 
   // MuJoCo is Z-up, so keep the whole scene Z-up.
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 50);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 60);
   camera.up.set(0, 0, 1);
   camera.position.set(1.2, -1.4, 0.9);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   container.appendChild(renderer.domElement);
+
+  // Sky
+  scene.add(makeSkyDome());
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0, 0.25);
@@ -368,24 +456,38 @@ async function init() {
   controls.update();
 
   // Lighting
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  scene.add(new THREE.HemisphereLight(0xbcd4ff, 0x30363d, 0.6));
-  const key = new THREE.DirectionalLight(0xffffff, 1.6);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+  scene.add(new THREE.HemisphereLight(0xdce9f7, 0xb9c2cc, 0.9));
+
+  const key = new THREE.DirectionalLight(0xfff6e8, 1.5);
   key.position.set(2, -3, 4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -3;
+  key.shadow.camera.right = 3;
+  key.shadow.camera.top = 3;
+  key.shadow.camera.bottom = -3;
+  key.shadow.camera.near = 0.5;
+  key.shadow.camera.far = 15;
+  key.shadow.bias = -0.0006;
+  key.shadow.normalBias = 0.01;
   scene.add(key);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+  scene.add(key.target);
+  keyLight = key;
+
+  const fill = new THREE.DirectionalLight(0xdfeaff, 0.45);
   fill.position.set(-3, 2, 2);
   scene.add(fill);
 
-  // Ground grid on the XY plane (Z-up)
-  const grid = new THREE.GridHelper(20, 40, 0x556070, 0x2c333d);
-  grid.rotation.x = Math.PI / 2;
-  scene.add(grid);
-
+  // Checkerboard floor on the XY plane (Z-up). 8 squares * repeat 5 over 20 m
+  // => one square every 0.5 m.
+  const floorTex = makeCheckerTexture();
+  floorTex.repeat.set(5, 5);
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(20, 20),
-    new THREE.MeshStandardMaterial({ color: 0x232830, roughness: 1, metalness: 0 })
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.92, metalness: 0.0 })
   );
+  floor.receiveShadow = true;
   scene.add(floor);
 
   // --- MuJoCo ---
@@ -449,6 +551,18 @@ let simAccum = 0;
 let stepCount = 0;
 let lastTime = performance.now();
 
+// Keep the shadow frustum centered on the robot, otherwise it loses its shadow
+// once it walks away from the origin.
+function followRobotWithLight() {
+  if (!keyLight) return;
+  const bx = data.xpos[3];
+  const by = data.xpos[4];
+  const bz = data.xpos[5];
+  keyLight.target.position.set(bx, by, bz);
+  keyLight.position.set(bx + 2, by - 3, bz + 4);
+  keyLight.target.updateMatrixWorld();
+}
+
 function animate(now) {
   requestAnimationFrame(animate);
   if (now === undefined) now = performance.now();
@@ -471,6 +585,7 @@ function animate(now) {
   }
 
   syncBodies();
+  followRobotWithLight();
   controls.update();
   renderer.render(scene, camera);
 }
